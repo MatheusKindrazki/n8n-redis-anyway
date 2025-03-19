@@ -39,16 +39,83 @@ export class SetCache implements INodeType {
         description: 'Chave única para armazenar os dados no Redis. Recomenda-se usar prefixos para organização.',
       },
       {
+        displayName: 'Data Type',
+        name: 'dataType',
+        type: 'options',
+        options: [
+          {
+            name: 'String',
+            value: 'string',
+            description: 'Armazena o valor como uma string simples',
+          },
+          {
+            name: 'JSON',
+            value: 'json',
+            description: 'Armazena o valor como um objeto JSON',
+          },
+          {
+            name: 'Hash',
+            value: 'hash',
+            description: 'Armazena o valor como um hash do Redis (conjunto de campos chave-valor)',
+          },
+        ],
+        default: 'string',
+        required: true,
+        description: 'Tipo de dado a ser armazenado no Redis',
+      },
+      {
         displayName: 'Value',
         name: 'value',
         type: 'string',
         default: '',
         required: true,
-        description: 'Valor a ser armazenado. Pode ser texto simples ou JSON (será detectado automaticamente).',
+        description: 'Valor a ser armazenado. Para JSON e Hash, use formato JSON válido.',
         placeholder: '{"name": "John", "email": "john@example.com"}',
+        displayOptions: {
+          show: {
+            dataType: ['string', 'json'],
+          },
+        },
         typeOptions: {
           rows: 4,
         },
+      },
+      {
+        displayName: 'Hash Fields',
+        name: 'hashFields',
+        type: 'fixedCollection',
+        typeOptions: {
+          multipleValues: true,
+        },
+        displayOptions: {
+          show: {
+            dataType: ['hash'],
+          },
+        },
+        default: {},
+        options: [
+          {
+            name: 'fields',
+            displayName: 'Fields',
+            values: [
+              {
+                displayName: 'Field',
+                name: 'field',
+                type: 'string',
+                default: '',
+                description: 'Nome do campo no hash',
+              },
+              {
+                displayName: 'Value',
+                name: 'value',
+                type: 'string',
+                default: '',
+                description: 'Valor do campo',
+              },
+            ],
+          },
+        ],
+        description: 'Campos e valores para armazenar no hash',
       },
       {
         displayName: 'Expiration (seconds)',
@@ -69,7 +136,6 @@ export class SetCache implements INodeType {
     try {
       const credentials = await this.getCredentials('redis');
       
-      // Configurar conexão Redis com as credenciais
       const redisOptions = {
         host: credentials.host as string,
         port: credentials.port as number,
@@ -83,31 +149,64 @@ export class SetCache implements INodeType {
 
       for (let i = 0; i < items.length; i++) {
         const key = this.getNodeParameter('key', i) as string;
-        const value = this.getNodeParameter('value', i) as string;
+        const dataType = this.getNodeParameter('dataType', i) as string;
         const expiration = this.getNodeParameter('expiration', i) as number;
 
-        try {
-          // Tenta analisar o valor como JSON
-          const jsonValue = JSON.parse(value);
-          
-          if (expiration > 0) {
-            await redis.set(key, JSON.stringify(jsonValue), 'EX', expiration);
-          } else {
-            await redis.set(key, JSON.stringify(jsonValue));
+        let success = false;
+
+        switch (dataType) {
+          case 'string': {
+            const value = this.getNodeParameter('value', i) as string;
+            if (expiration > 0) {
+              await redis.set(key, value, 'EX', expiration);
+            } else {
+              await redis.set(key, value);
+            }
+            success = true;
+            break;
           }
-        } catch {
-          // Se o valor não for JSON válido, armazena como string
-          if (expiration > 0) {
-            await redis.set(key, value, 'EX', expiration);
-          } else {
-            await redis.set(key, value);
+
+          case 'json': {
+            const value = this.getNodeParameter('value', i) as string;
+            try {
+              const jsonValue = JSON.parse(value);
+              if (expiration > 0) {
+                await redis.set(key, JSON.stringify(jsonValue), 'EX', expiration);
+              } else {
+                await redis.set(key, JSON.stringify(jsonValue));
+              }
+              success = true;
+            } catch (error) {
+              throw new NodeOperationError(this.getNode(), 'O valor fornecido não é um JSON válido');
+            }
+            break;
+          }
+
+          case 'hash': {
+            const hashFields = this.getNodeParameter('hashFields.fields', i, []) as Array<{ field: string; value: string }>;
+            if (hashFields.length === 0) {
+              throw new NodeOperationError(this.getNode(), 'É necessário fornecer pelo menos um campo para o hash');
+            }
+
+            const hashData: Record<string, string> = {};
+            for (const { field, value } of hashFields) {
+              hashData[field] = value;
+            }
+
+            await redis.hset(key, hashData);
+            if (expiration > 0) {
+              await redis.expire(key, expiration);
+            }
+            success = true;
+            break;
           }
         }
 
         returnData.push({
           json: {
             key,
-            success: true,
+            dataType,
+            success,
             expiresIn: expiration > 0 ? expiration : 'never',
             timestamp: new Date().toISOString()
           },
