@@ -6,7 +6,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { setupRedisClient, getValue, keyExists, getRemainingTTL, IRedisCredentials, safeConnect, safeDisconnect, isConnectionReady } from './RedisAnywayUtils';
+import { setupRedisClient, getValue, keyExists, getRemainingTTL, IRedisCredentials, safeConnect, safeDisconnect, isConnectionReady, setWithExpiry } from './RedisAnywayUtils';
 
 export class RedisAnywayCacheRenewal implements INodeType {
 	description: INodeTypeDescription = {
@@ -15,7 +15,7 @@ export class RedisAnywayCacheRenewal implements INodeType {
 		icon: 'file:redis.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Extends the expiration time of a Redis cache key proactively before it expires',
+		description: 'Extends the expiration time of a Redis cache key and optionally updates its value',
 		defaults: {
 			name: 'Redis Cache Renewal',
 			color: '#9c88ff',
@@ -60,6 +60,64 @@ export class RedisAnywayCacheRenewal implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Renewal Mode',
+				name: 'renewalMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Extend TTL Only',
+						value: 'extendOnly',
+						description: 'Only update the expiration time, keep the existing value',
+					},
+					{
+						name: 'Update Value During Renewal',
+						value: 'updateValue',
+						description: 'Update both the expiration time and the value',
+					},
+				],
+				default: 'extendOnly',
+				description: 'Whether to only extend the TTL or also update the value during renewal',
+			},
+			{
+				displayName: 'New Value',
+				name: 'newValue',
+				type: 'string',
+				displayOptions: {
+					show: {
+						renewalMode: ['updateValue'],
+					},
+				},
+				default: '',
+				description: 'The new value to set when renewing the cache. For complex data, consider using JSON',
+				typeOptions: {
+					rows: 4,
+				},
+			},
+			{
+				displayName: 'JSON Output',
+				name: 'jsonOutput',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						renewalMode: ['updateValue'],
+					},
+				},
+				default: false,
+				description: 'Whether to stringify complex objects before storing in Redis',
+			},
+			{
+				displayName: 'Always Update Value',
+				name: 'alwaysUpdateValue',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						renewalMode: ['updateValue'],
+					},
+				},
+				default: false,
+				description: 'Whether to update the value even if renewal is not needed (force update)',
+			},
+			{
 				displayName: 'Include Key Value',
 				name: 'includeValue',
 				type: 'boolean',
@@ -78,7 +136,7 @@ export class RedisAnywayCacheRenewal implements INodeType {
 				name: 'jsonParse',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to parse the Redis cached value as JSON (turn on if you cached JSON data)',
+				description: 'Whether to parse the Redis cached value as JSON when retrieving',
 			},
 			{
 				displayName: 'Include Cache Metadata',
@@ -122,10 +180,22 @@ export class RedisAnywayCacheRenewal implements INodeType {
 				const key = this.getNodeParameter('key', i) as string;
 				const renewalTTL = this.getNodeParameter('renewalTTL', i) as number;
 				const renewalThreshold = this.getNodeParameter('renewalThreshold', i) as number;
+				const renewalMode = this.getNodeParameter('renewalMode', i) as string;
 				const includeValue = this.getNodeParameter('includeValue', i) as boolean;
 				const propertyName = includeValue ? this.getNodeParameter('propertyName', i) as string : '';
 				const jsonParse = this.getNodeParameter('jsonParse', i) as boolean;
 				const includeMetadata = this.getNodeParameter('includeMetadata', i) as boolean;
+				
+				// Update value options
+				let newValue = '';
+				let jsonOutput = false;
+				let alwaysUpdateValue = false;
+				
+				if (renewalMode === 'updateValue') {
+					newValue = this.getNodeParameter('newValue', i) as string;
+					jsonOutput = this.getNodeParameter('jsonOutput', i) as boolean;
+					alwaysUpdateValue = this.getNodeParameter('alwaysUpdateValue', i) as boolean;
+				}
 
 				if (!key) {
 					throw new NodeOperationError(this.getNode(), 'No key specified');
@@ -135,27 +205,29 @@ export class RedisAnywayCacheRenewal implements INodeType {
 				const exists = await keyExists(client, key);
 				
 				if (exists) {
-					// Get current TTL
+					// Get current TTL and value
 					const currentTTL = await getRemainingTTL(client, key);
+					let currentValue = null;
+					
+					if (includeValue) {
+						currentValue = await getValue(client, key);
+						
+						// Parse JSON if needed
+						if (jsonParse && currentValue) {
+							try {
+								currentValue = JSON.parse(currentValue);
+							} catch (error) {
+								throw new NodeOperationError(this.getNode(), `Failed to parse Redis value as JSON: ${error.message}`);
+							}
+						}
+					}
 					
 					// If TTL is -1, it means the key never expires
 					if (currentTTL === -1) {
 						const newItem = { ...items[i].json };
 						
 						if (includeValue) {
-							// Get the value if requested
-							let value = await getValue(client, key);
-							
-							// Parse JSON if needed
-							if (jsonParse && value) {
-								try {
-									value = JSON.parse(value);
-								} catch (error) {
-									throw new NodeOperationError(this.getNode(), `Failed to parse Redis value as JSON: ${error.message}`);
-								}
-							}
-							
-							newItem[propertyName] = value;
+							newItem[propertyName] = currentValue;
 						}
 						
 						if (includeMetadata) {
@@ -166,8 +238,26 @@ export class RedisAnywayCacheRenewal implements INodeType {
 							newItem['redis_permanent'] = true;
 						}
 						
-						// Key never expires, so it doesn't need renewal
-						notRenewedOutput.push({ json: newItem });
+						// Handle forced value update for permanent keys
+						if (renewalMode === 'updateValue' && alwaysUpdateValue) {
+							// Prepare value for storing
+							let valueToStore = newValue;
+							if (jsonOutput && typeof newValue === 'object') {
+								valueToStore = JSON.stringify(newValue);
+							}
+							
+							// Set the new value but keep it permanent
+							await client.set(key, valueToStore);
+							
+							if (includeMetadata) {
+								newItem['redis_value_updated'] = true;
+							}
+							
+							renewedOutput.push({ json: newItem });
+						} else {
+							// Key never expires, so it doesn't need renewal
+							notRenewedOutput.push({ json: newItem });
+						}
 					} 
 					// If TTL is > 0, check if renewal is needed
 					else if (currentTTL > 0) {
@@ -184,19 +274,7 @@ export class RedisAnywayCacheRenewal implements INodeType {
 						const newItem = { ...items[i].json };
 						
 						if (includeValue) {
-							// Get the value if requested
-							let value = await getValue(client, key);
-							
-							// Parse JSON if needed
-							if (jsonParse && value) {
-								try {
-									value = JSON.parse(value);
-								} catch (error) {
-									throw new NodeOperationError(this.getNode(), `Failed to parse Redis value as JSON: ${error.message}`);
-								}
-							}
-							
-							newItem[propertyName] = value;
+							newItem[propertyName] = currentValue;
 						}
 						
 						if (includeMetadata) {
@@ -207,10 +285,27 @@ export class RedisAnywayCacheRenewal implements INodeType {
 							newItem['redis_permanent'] = false;
 						}
 						
-						// If renewal is needed, extend the TTL
-						if (needsRenewal) {
-							// Renew the TTL
-							await client.expire(key, renewalTTL);
+						// Handle renewal and/or value update
+						const shouldUpdateValue = renewalMode === 'updateValue' && (needsRenewal || alwaysUpdateValue);
+						
+						if (needsRenewal || shouldUpdateValue) {
+							if (shouldUpdateValue) {
+								// Update both TTL and value
+								let valueToStore = newValue;
+								if (jsonOutput && typeof newValue === 'object') {
+									valueToStore = JSON.stringify(newValue);
+								}
+								
+								// Set new value with expiry
+								await setWithExpiry(client, key, valueToStore, renewalTTL);
+								
+								if (includeMetadata) {
+									newItem['redis_value_updated'] = true;
+								}
+							} else {
+								// Just renew the TTL
+								await client.expire(key, renewalTTL);
+							}
 							
 							if (includeMetadata) {
 								// Get new TTL after renewal
@@ -224,6 +319,7 @@ export class RedisAnywayCacheRenewal implements INodeType {
 						} else {
 							if (includeMetadata) {
 								newItem['redis_renewed'] = false;
+								newItem['redis_value_updated'] = false;
 							}
 							
 							notRenewedOutput.push({ json: newItem });

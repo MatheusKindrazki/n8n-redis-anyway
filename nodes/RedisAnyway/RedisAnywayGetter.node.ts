@@ -21,8 +21,8 @@ export class RedisAnywayGetter implements INodeType {
 			color: '#4ecdc4',
 		},
 		inputs: ['main'],
-		outputs: ['main', 'main'],
-		outputNames: ['Cache Valid', 'Cache Invalid'],
+		outputs: ['main', 'main', 'main'],
+		outputNames: ['Cache Valid', 'Cache Invalid', 'Needs Renewal'],
 		credentials: [
 			{
 				name: 'redisAnyway',
@@ -60,15 +60,51 @@ export class RedisAnywayGetter implements INodeType {
 				default: true,
 				description: 'Whether to include cache metadata like TTL and cache hit status in the output',
 			},
+			{
+				displayName: 'Enable Renewal Detection',
+				name: 'enableRenewalDetection',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to check if cache is close to expiration and trigger the Needs Renewal output',
+			},
+			{
+				displayName: 'Renewal Threshold',
+				name: 'renewalThreshold',
+				type: 'number',
+				displayOptions: {
+					show: {
+						enableRenewalDetection: [true],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 99
+				},
+				default: 30,
+				description: 'Percentage threshold of remaining TTL to trigger renewal output (e.g., 30 means trigger when 30% or less TTL remains)',
+			},
+			{
+				displayName: 'Expected TTL',
+				name: 'expectedTTL',
+				type: 'number',
+				displayOptions: {
+					show: {
+						enableRenewalDetection: [true],
+					},
+				},
+				default: 3600,
+				description: 'Expected TTL in seconds. Used to calculate the threshold for renewal. Set this to what you typically use when storing the cache.',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		
-		// Create empty arrays for both outputs
+		// Create empty arrays for all outputs
 		const cacheValidOutput: INodeExecutionData[] = [];
 		const cacheInvalidOutput: INodeExecutionData[] = [];
+		const needsRenewalOutput: INodeExecutionData[] = [];
 		let client;
 
 		try {
@@ -96,6 +132,15 @@ export class RedisAnywayGetter implements INodeType {
 				const propertyName = this.getNodeParameter('propertyName', i) as string;
 				const jsonParse = this.getNodeParameter('jsonParse', i) as boolean;
 				const includeMetadata = this.getNodeParameter('includeMetadata', i) as boolean;
+				const enableRenewalDetection = this.getNodeParameter('enableRenewalDetection', i, false) as boolean;
+				
+				let renewalThreshold = 0;
+				let expectedTTL = 0;
+				
+				if (enableRenewalDetection) {
+					renewalThreshold = this.getNodeParameter('renewalThreshold', i) as number;
+					expectedTTL = this.getNodeParameter('expectedTTL', i) as number;
+				}
 
 				if (!key) {
 					throw new NodeOperationError(this.getNode(), 'No key specified');
@@ -107,6 +152,9 @@ export class RedisAnywayGetter implements INodeType {
 				if (exists) {
 					// Cache valid - get the value
 					let value = await getValue(client, key);
+					
+					// Get the TTL for potential renewal check
+					const currentTTL = await getRemainingTTL(client, key);
 					
 					// Parse JSON if needed
 					if (jsonParse && value) {
@@ -123,9 +171,29 @@ export class RedisAnywayGetter implements INodeType {
 					
 					// Add metadata if requested
 					if (includeMetadata) {
-						newItem['redis_ttl'] = await getRemainingTTL(client, key);
+						newItem['redis_ttl'] = currentTTL;
 						newItem['redis_key'] = key;
 						newItem['redis_cache_hit'] = true;
+					}
+					
+					// Check if cache needs renewal
+					if (enableRenewalDetection && currentTTL !== -1) { // Skip renewal check for permanent keys
+						// Calculate the threshold in seconds
+						const thresholdSeconds = (expectedTTL * renewalThreshold) / 100;
+						
+						// Determine if renewal is needed
+						const needsRenewal = currentTTL <= thresholdSeconds;
+						
+						if (includeMetadata) {
+							newItem['redis_renewal_threshold'] = thresholdSeconds;
+							newItem['redis_needs_renewal'] = needsRenewal;
+						}
+						
+						if (needsRenewal) {
+							// Send to the renewal output
+							needsRenewalOutput.push({ json: newItem });
+							continue; // Skip adding to valid output
+						}
 					}
 
 					cacheValidOutput.push({ json: newItem });
@@ -142,8 +210,8 @@ export class RedisAnywayGetter implements INodeType {
 				}
 			}
 
-			// Return both outputs (valid cache data, invalid cache data)
-			return [cacheValidOutput, cacheInvalidOutput];
+			// Return all outputs (valid cache data, invalid cache data, needs renewal)
+			return [cacheValidOutput, cacheInvalidOutput, needsRenewalOutput];
 			
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), error);
