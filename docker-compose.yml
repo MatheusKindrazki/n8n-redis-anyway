@@ -17,15 +17,29 @@ services:
       - ~/.n8n:/home/node/.n8n
       - ./:/home/node/.n8n/custom/n8n-nodes-redis-anyway
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    networks:
+      - n8n-network
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --tcp-keepalive 60
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - n8n-network
 
 volumes:
-  redis_data: 
+  redis_data:
+
+networks:
+  n8n-network:
+    driver: bridge 

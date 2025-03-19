@@ -61,8 +61,9 @@ export class Redis implements ICredentialType {
 
   test: ICredentialTestRequest = {
     request: {
-      method: 'GET',
-      url: '=http://{{$credentials.host}}:{{$credentials.port}}',
+      baseURL: '=http://{{$credentials.host}}:{{$credentials.port}}',
+      method: 'HEAD',
+      timeout: 5000,
     },
   };
 } 
