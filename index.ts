@@ -1,5 +1,8 @@
 import { INodeTypeData } from 'n8n-workflow';
-import { RedisAnywaySetter, RedisAnywayGetter, RedisAnywayTest } from './nodes/RedisAnyway';
+import { RedisAnywaySetter } from './nodes/RedisAnyway/RedisAnywaySetter.node';
+import { RedisAnywayGetter } from './nodes/RedisAnyway/RedisAnywayGetter.node';
+import { RedisAnywayTest } from './nodes/RedisAnyway/RedisAnywayTest.node';
+import { RedisAnywayRenewer } from './nodes/RedisAnyway/RedisAnywayRenewer.node';
 
 export const nodeTypes: INodeTypeData = {
 	redisAnywaySetter: {
@@ -13,5 +16,9 @@ export const nodeTypes: INodeTypeData = {
 	redisAnywayTest: {
 		sourcePath: __dirname + '/nodes/RedisAnyway/RedisAnywayTest.node.js',
 		type: new RedisAnywayTest()
+	},
+	redisAnywayRenewer: {
+		sourcePath: __dirname + '/nodes/RedisAnyway/RedisAnywayRenewer.node.js',
+		type: new RedisAnywayRenewer()
 	}
 }; 
