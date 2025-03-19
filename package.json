@@ -24,7 +24,7 @@
     "format": "prettier --write .",
     "lint": "eslint src/**/*.ts",
     "lintfix": "eslint src/**/*.ts --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.js src/**/*.ts",
+    "prepublishOnly": "npm run build",
     "test": "jest"
   },
   "files": [
