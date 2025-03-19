@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "es2019",
+      "es2020",
+      "es2022"
+    ],
+    "types": [
+      "node"
+    ],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "es2019",
+    "outDir": "./dist/",
+    "sourceMap": true,
+    "strict": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "removeComments": true,
+    "noImplicitAny": true,
+    "useUnknownInCatchVariables": false
+  },
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "node_modules/**/*",
+    "dist/**/*"
+  ]
+} 

@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  n8n:
+    image: n8nio/n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - NODE_ENV=development
+      - N8N_LOG_LEVEL=debug
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./:/home/node/.n8n/custom/node_modules/n8n-nodes-redis-anyway
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+  redis_data:
