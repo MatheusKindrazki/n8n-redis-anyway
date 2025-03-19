@@ -16,6 +16,7 @@ export class Redis implements ICredentialType {
       type: 'string',
       default: 'localhost',
       required: true,
+      description: 'Hostname ou endereço IP do servidor Redis',
     },
     {
       displayName: 'Port',
@@ -23,6 +24,15 @@ export class Redis implements ICredentialType {
       type: 'number',
       default: 6379,
       required: true,
+      description: 'Porta do servidor Redis (padrão: 6379)',
+    },
+    {
+      displayName: 'Username',
+      name: 'username',
+      type: 'string',
+      default: 'DEFAULT',
+      required: false,
+      description: 'Nome de usuário do Redis (a partir do Redis 6.0). Use DEFAULT para conexões sem usuário específico',
     },
     {
       displayName: 'Password',
@@ -33,7 +43,15 @@ export class Redis implements ICredentialType {
       },
       default: '',
       required: false,
+      description: 'Senha do Redis. Deixe em branco para conexões sem senha',
     },
+    {
+      displayName: 'Use TLS/SSL',
+      name: 'useTls',
+      type: 'boolean',
+      default: false,
+      description: 'Ativar conexão segura via TLS/SSL',
+    }
   ];
 
   authenticate: IAuthenticateGeneric = {
