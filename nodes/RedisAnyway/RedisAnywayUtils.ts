@@ -14,76 +14,46 @@ export interface IRedisCredentials {
  * Initialize a Redis client
  */
 export function setupRedisClient(credentials: IRedisCredentials): Redis {
-	let client;
-	
+	const redisOptions: IDataObject = {
+		host: credentials.host || 'localhost',
+		port: credentials.port || 6379,
+		db: credentials.database || 0,
+		// Permitir reconexão para melhorar estabilidade
+		retryStrategy: (times: number) => {
+			// Reconectar a cada 200ms até 3 tentativas
+			if (times <= 3) {
+				return 200;
+			}
+			return null;
+		},
+		// Conectar apenas quando necessário
+		lazyConnect: true,
+		// Desconectar automaticamente após 60 segundos ocioso
+		disconnectTimeout: 60000,
+		// Tentar manter a conexão por mais tempo
+		enableOfflineQueue: true,
+		connectTimeout: 10000,
+		// Detectar e recuperar de conexões perdidas
+		enableReadyCheck: true,
+	};
+
+	// Só adicionamos password se ela existir e não estiver vazia
+	if (credentials.password && credentials.password.trim() !== '') {
+		redisOptions.password = credentials.password;
+	}
+
+	if (credentials.ssl === true) {
+		redisOptions.tls = {};
+	}
+
+	// Só adicionamos username se ele existir e não estiver vazio
+	if (credentials.username && credentials.username.trim() !== '') {
+		redisOptions.username = credentials.username;
+	}
+
+	// Tenta criar um cliente com novas opções
 	try {
-		// Primeira tentativa: verificar se o host é uma URL completa
-		if (credentials.host && (credentials.host.startsWith('redis://') || credentials.host.startsWith('rediss://'))) {
-			console.log('Detectada URL Redis completa, conectando diretamente via URL');
-			
-			// Se for uma URL completa, usamos diretamente
-			const connectionOptions: IDataObject = {
-				// Permitir reconexão para melhorar estabilidade
-				retryStrategy: (times: number) => {
-					// Reconectar a cada 200ms até 3 tentativas
-					if (times <= 3) {
-						return 200;
-					}
-					return null;
-				},
-				lazyConnect: true,
-				enableOfflineQueue: true,
-				connectTimeout: 10000,
-				enableReadyCheck: true,
-			};
-			
-			// Só adicionamos password se ela existir e não estiver vazia e não estiver na URL
-			if (credentials.password && credentials.password.trim() !== '' && !credentials.host.includes('@')) {
-				connectionOptions.password = credentials.password;
-			}
-			
-			client = new Redis(credentials.host, connectionOptions as any);
-		} else {
-			// Abordagem padrão com host/port separados
-			const redisOptions: IDataObject = {
-				host: credentials.host || 'localhost',
-				port: credentials.port || 6379,
-				db: credentials.database || 0,
-				// Permitir reconexão para melhorar estabilidade
-				retryStrategy: (times: number) => {
-					// Reconectar a cada 200ms até 3 tentativas
-					if (times <= 3) {
-						return 200;
-					}
-					return null;
-				},
-				// Conectar apenas quando necessário
-				lazyConnect: true,
-				// Desconectar automaticamente após 60 segundos ocioso
-				disconnectTimeout: 60000,
-				// Tentar manter a conexão por mais tempo
-				enableOfflineQueue: true,
-				connectTimeout: 10000,
-				// Detectar e recuperar de conexões perdidas
-				enableReadyCheck: true,
-			};
-
-			// Só adicionamos password se ela existir e não estiver vazia
-			if (credentials.password && credentials.password.trim() !== '') {
-				redisOptions.password = credentials.password;
-			}
-
-			if (credentials.ssl === true) {
-				redisOptions.tls = {};
-			}
-
-			// Só adicionamos username se ele existir e não estiver vazio
-			if (credentials.username && credentials.username.trim() !== '') {
-				redisOptions.username = credentials.username;
-			}
-
-			client = new Redis(redisOptions as any);
-		}
+		const client = new Redis(redisOptions as any);
 		
 		// Adicionar handler para erros de conexão para melhor debug
 		client.on('error', (error: Error) => {
@@ -101,40 +71,9 @@ export function setupRedisClient(credentials: IRedisCredentials): Redis {
 		
 		return client;
 	} catch (error) {
-		// Se houve erro na criação, tentamos um fallback para URL direta
-		console.error('Erro ao criar cliente Redis com a configuração padrão:', error);
-		
-		if (!credentials.host.startsWith('redis://') && !credentials.host.startsWith('rediss://')) {
-			// Se não começou com redis:// ou rediss://, tente criar uma URL
-			try {
-				console.log('Tentando fallback: criando URL Redis...');
-				
-				const protocol = credentials.ssl ? 'rediss://' : 'redis://';
-				const auth = credentials.username && credentials.password 
-					? `${credentials.username}:${credentials.password}@` 
-					: credentials.password 
-						? `:${credentials.password}@` 
-						: '';
-				const db = credentials.database ? `/${credentials.database}` : '';
-				
-				// Construindo URL no formato: redis[s]://[[user][:password@]]host[:port][/db-number]
-				const redisUrl = `${protocol}${auth}${credentials.host}:${credentials.port}${db}`;
-				console.log(`Tentando conexão com URL: ${redisUrl.replace(/\:[^:@]+@/, ':***@')}`);
-				
-				client = new Redis(redisUrl);
-				
-				client.on('error', (error: Error) => {
-					console.error('Redis fallback connection error:', error.message);
-				});
-				
-				return client;
-			} catch (fallbackError) {
-				console.error('Erro no fallback para URL Redis:', fallbackError);
-				throw new Error(`Não foi possível conectar ao Redis: ${error.message}. Tentativa de fallback também falhou: ${fallbackError.message}`);
-			}
-		}
-		
-		throw new Error(`Erro ao conectar ao Redis: ${error.message}. Verifique se as configurações estão corretas.`);
+		// Se houve erro na criação, registramos e relançamos
+		console.error('Erro ao criar cliente Redis:', error);
+		throw error;
 	}
 }
 

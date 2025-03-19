@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/matheuskindrazki/n8n-redis-anyway.git"
+    "url": "https://github.com/matheuskindrazki/n8n-redis-anyway.git"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,7 +26,7 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json"
   },
   "files": [
     "dist"
@@ -38,9 +38,7 @@
     ],
     "nodes": [
       "dist/nodes/RedisAnyway/RedisAnywaySetter.node.js",
-      "dist/nodes/RedisAnyway/RedisAnywayGetter.node.js",
-      "dist/nodes/RedisAnyway/RedisAnywayTest.node.js",
-      "dist/nodes/RedisAnyway/RedisAnywayRenewer.node.js"
+      "dist/nodes/RedisAnyway/RedisAnywayGetter.node.js"
     ]
   },
   "devDependencies": {
@@ -48,7 +46,7 @@
     "@types/node": "^18.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.0.0",
-    "eslint-plugin-n8n-nodes-base": "^1.16.3",
+    "eslint-plugin-n8n-nodes-base": "^1.0.0",
     "gulp": "^4.0.2",
     "n8n-core": "^0.125.0",
     "n8n-workflow": "^0.107.0",
