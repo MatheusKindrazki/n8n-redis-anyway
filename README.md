@@ -1,97 +1,152 @@
 # n8n-nodes-redis-anyway
 
-This is an n8n community node that provides easy integration with Redis for caching data with expiration support and conditional workflow routing based on cache validity.
-
-![Redis Anyway Node Example](https://example.com/redis-anyway-screenshot.png)
+This is a node for [n8n](https://n8n.io/) that provides intelligent Redis cache management with automatic renewal capabilities.
 
 ## Features
 
-- **Store data in Redis** with a specified expiration time
-- **Conditionally route workflows** based on whether a key exists and is valid (not expired)
-- **JSON support** for storing and retrieving structured data
-- **Simple configuration** - use familiar Redis connection parameters
-- **Metadata output** to track cache hits, TTL, and other useful information
+- Store data in Redis with configurable expiration
+- Retrieve cached data with automatic expiration checks
+- Proactive cache renewal based on configurable thresholds
+- Support for JSON data structures
+- Simple and intuitive interface
 
 ## Installation
 
-Follow these steps to install this custom node:
+### In n8n:
 
-### Community Nodes (Recommended)
+1. Go to **Settings > Community Nodes**
+2. Click on **Install**
+3. Enter `n8n-nodes-redis-anyway` in the input field
+4. Click on **Install**
 
-1. Open your n8n instance
-2. Go to **Settings > Community Nodes**
-3. Select **Install**
-4. Enter `n8n-nodes-redis-anyway` in the **npm package name** field
-5. Agree to the risks of using community nodes
-6. Click **Install**
+### Manual Installation:
 
-### Manual Installation
+1. Clone this repository
+2. Install dependencies: `pnpm install`
+3. Build: `pnpm build`
+4. Copy `dist` folder to n8n custom nodes directory (usually `~/.n8n/custom`)
 
-If you prefer to install the node manually:
+### Testing with Docker
+
+We provide a convenient script to manage the test environment. First, make the script executable:
 
 ```bash
-npm install n8n-nodes-redis-anyway
+chmod +x scripts/test-environment.sh
 ```
 
-For Docker-based deployments, add the following line to your Dockerfile before the font installation command:
+### Starting the Environment
 
+This will build the plugin and start n8n with Redis:
+
+```bash
+./scripts/test-environment.sh start
 ```
-RUN cd /usr/local/lib/node_modules/n8n && npm install n8n-nodes-redis-anyway
+
+The script will:
+1. Check if pnpm is installed (and install if needed)
+2. Check if Docker is running
+3. Build the plugin
+4. Start n8n and Redis containers
+5. Display the necessary Redis credentials
+
+### Accessing n8n
+
+Once started, access n8n at http://localhost:5678
+
+Use these Redis credentials in n8n:
+- Host: `redis`
+- Port: `6379`
+- Password: (leave empty)
+
+### Rebuilding the Plugin
+
+If you make changes to the plugin code, rebuild it with:
+
+```bash
+./scripts/test-environment.sh rebuild
 ```
 
-## Usage
+### Stopping the Environment
 
-The Redis Anyway node package includes two nodes:
+To stop n8n and Redis:
 
-### 1. Redis Setter Node
+```bash
+./scripts/test-environment.sh stop
+```
 
-Use this node to store data in Redis with an expiration time.
+## Nodes
 
-**Parameters:**
+### Redis Set Cache
 
-- **Key:** The Redis key to use for storing data
-- **Value:** The data to store (string or JSON)
-- **Expiration Time:** Time in seconds after which the key will expire
-- **JSON Output:** Automatically stringify JSON data before storing
+This node allows you to store data in Redis with a specified expiration time.
 
-### 2. Redis Getter Node
+#### Configuration
 
-Use this node to retrieve data from Redis and route workflow execution based on whether the key exists and is valid (not expired).
+- **Key**: The key under which to store the data
+- **Value**: The value to store (supports JSON)
+- **Expiration**: Time in seconds after which the data will expire
 
-**Parameters:**
+#### Example
 
-- **Key:** The Redis key to check and retrieve
-- **Property Name:** The name of the property to store the retrieved data under
-- **JSON Parse:** Automatically parse the value as JSON if checked
-- **Include Metadata:** Add Redis metadata like TTL to the output
+```json
+{
+  "key": "user:123",
+  "value": "{\"name\":\"John\",\"age\":30}",
+  "expiration": 3600
+}
+```
 
-**Outputs:**
+### Redis Get Cache
 
-- **Cache Valid:** This output activates when the key exists and is not expired
-- **Cache Invalid:** This output activates when the key doesn't exist or has expired
+This node retrieves data from Redis and provides three possible outputs based on the cache state.
 
-## Example Workflow
+#### Configuration
 
-Here's a simple example of how to use the Redis Anyway nodes in a workflow:
+- **Key**: The key to retrieve data from
+- **Renewal Threshold**: Time in seconds before expiration to trigger renewal
 
-1. **Trigger** (HTTP Request, Webhook, etc.)
-2. **Redis Getter** - Check if data for a given ID is in Redis cache
-   - If cache is valid → use cached data
-   - If cache is invalid → fetch fresh data from API
-3. **HTTP Request** - Call an API to get fresh data (only runs if cache is invalid)
-4. **Redis Setter** - Store the API response in Redis for future use
+#### Outputs
+
+1. **Valid Cache**: Contains the cached data if it exists and is not expired
+2. **Invalid Cache**: Triggered when the cache is expired or doesn't exist
+3. **Needs Renewal**: Triggered when the cache is valid but close to expiration (based on threshold)
+
+#### Example Flow
+
+```plaintext
+[HTTP Request] -> [Redis Get Cache]
+                    |
+                    ├─> [Valid Cache] -> [Use Data]
+                    |
+                    ├─> [Invalid Cache] -> [Fetch New Data] -> [Redis Set Cache]
+                    |
+                    └─> [Needs Renewal] -> [Background Fetch] -> [Redis Set Cache]
+```
 
 ## Redis Connection
 
-To connect to your Redis instance, create a Redis Anyway credentials configuration with the following parameters:
+Configure your Redis connection in n8n's credentials:
 
-- **Host:** Redis host (default: localhost)
-- **Port:** Redis port (default: 6379)
-- **Password:** Redis password (optional)
-- **Database:** Redis database number (default: 0)
-- **Use SSL:** Enable for secure connections
-- **Username:** Redis username for ACL authentication (Redis 6+)
+1. Go to **Credentials**
+2. Click **Add Credential**
+3. Select **Redis**
+4. Fill in:
+   - Host (default: localhost)
+   - Port (default: 6379)
+   - Password (optional)
+
+## Development
+
+1. Clone repository
+2. Install dependencies: `pnpm install`
+3. Build: `pnpm build`
+4. Link to n8n: `pnpm link`
+5. Start n8n: `n8n start`
 
 ## License
 
-[MIT](LICENSE.md) 
+MIT
+
+## Author
+
+Matheus Kindrazki (kindra.fireflies@gmail.com) 

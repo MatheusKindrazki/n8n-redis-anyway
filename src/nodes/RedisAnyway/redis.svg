@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="16" cy="16" r="16" fill="#DC382D"/>
+  
+  <!-- Redis Logo Base (Simplified) -->
+  <path d="M22 12.5L16 15.5L10 12.5L16 9.5L22 12.5Z" fill="white"/>
+  <path d="M22 16.5L16 19.5L10 16.5L16 13.5L22 16.5Z" fill="white"/>
+  <path d="M22 20.5L16 23.5L10 20.5L16 17.5L22 20.5Z" fill="white"/>
+  
+  <!-- Circular Arrows (Auto-renewal) -->
+  <path d="M16 4C19.9 4 23.3 6.1 24.9 9.2" stroke="white" stroke-width="2" stroke-linecap="round" fill="none">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="0 16 16"
+      to="360 16 16"
+      dur="4s"
+      repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Cache Indicator -->
+
+</svg> 
