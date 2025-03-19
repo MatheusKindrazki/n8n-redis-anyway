@@ -34,7 +34,8 @@
     "n8nNodesApiVersion": 1,
     "nodes": [
       "dist/nodes/RedisAnyway/SetCache.node.js",
-      "dist/nodes/RedisAnyway/GetCache.node.js"
+      "dist/nodes/RedisAnyway/GetCache.node.js",
+      "dist/nodes/RedisAnyway/ManipulateCache.node.js"
     ]
   },
   "devDependencies": {
