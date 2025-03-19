@@ -16,7 +16,8 @@
     "type": "git",
     "url": "git+https://github.com/matheuskindrazki/n8n-redis-anyway.git"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc && gulp build:icons",
     "dev": "tsc --watch",
