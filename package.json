@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-redis-anyway",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "n8n node to interact with Redis for caching with conditional flows",
   "keywords": [
     "n8n-community-node-package",
