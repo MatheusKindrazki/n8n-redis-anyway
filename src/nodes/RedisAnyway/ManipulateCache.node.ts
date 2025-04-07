@@ -7,6 +7,7 @@ import {
   NodeConnectionType,
 } from 'n8n-workflow';
 import { RedisConnection } from './RedisConnection';
+import { redisConnectionTest } from './util';
 
 export class ManipulateCache implements INodeType {
   description: INodeTypeDescription = {
@@ -119,6 +120,10 @@ export class ManipulateCache implements INodeType {
     ],
   };
 
+  methods = {
+    credentialTest: { redisConnectionTest },
+  };
+
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
@@ -132,6 +137,7 @@ export class ManipulateCache implements INodeType {
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
+        db: credentials.db as number,
       };
       
       RedisConnection.initialize(redisOptions);

@@ -51,6 +51,13 @@ export class Redis implements ICredentialType {
       type: 'boolean',
       default: false,
       description: 'Ativar conexão segura via TLS/SSL',
+    },
+    {
+      displayName: 'Database',
+      name: 'db',
+      type: 'number',
+      default: 0,
+      description: '',
     }
   ];
 
@@ -58,12 +65,4 @@ export class Redis implements ICredentialType {
     type: 'generic',
     properties: {},
   };
-
-  test: ICredentialTestRequest = {
-    request: {
-      baseURL: '=http://{{$credentials.host}}:{{$credentials.port}}',
-      method: 'HEAD',
-      timeout: 5000,
-    },
-  };
-} 
+}

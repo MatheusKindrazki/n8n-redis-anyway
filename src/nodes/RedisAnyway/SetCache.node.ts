@@ -126,6 +126,24 @@ export class SetCache implements INodeType {
         description: 'Tempo em segundos após o qual os dados expirarão. Use 0 para não expirar.',
         hint: '3600 = 1 hora, 86400 = 1 dia, 604800 = 1 semana',
       },
+      {
+        displayName: 'Return the value back',
+        name: 'returnBackValue',
+        type: 'boolean',
+        default: false,
+        required: true,
+        description: '',
+        hint: '',
+      },
+      {
+        displayName: 'Return the value even if unsuccessful',
+        name: 'returnBackValueAlways',
+        type: 'boolean',
+        default: false,
+        required: true,
+        description: '',
+        hint: '',
+      },
     ],
   };
 
@@ -142,21 +160,25 @@ export class SetCache implements INodeType {
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
+        db: credentials.db as number,
       };
       
       RedisConnection.initialize(redisOptions);
       const redis = RedisConnection.getInstance();
-
+      
       for (let i = 0; i < items.length; i++) {
+        const returnBackValueAlways = this.getNodeParameter("returnBackValueAlways", i) as boolean;
+        const returnBackValue = this.getNodeParameter("returnBackValue", i) as boolean;
         const key = this.getNodeParameter('key', i) as string;
         const dataType = this.getNodeParameter('dataType', i) as string;
         const expiration = this.getNodeParameter('expiration', i) as number;
 
         let success = false;
+        let value = undefined;
 
         switch (dataType) {
           case 'string': {
-            const value = this.getNodeParameter('value', i) as string;
+            value = this.getNodeParameter('value', i) as string;
             if (expiration > 0) {
               await redis.set(key, value, 'EX', expiration);
             } else {
@@ -167,13 +189,13 @@ export class SetCache implements INodeType {
           }
 
           case 'json': {
-            const value = this.getNodeParameter('value', i) as string;
+            const rawValue = this.getNodeParameter('value', i) as string;
             try {
-              const jsonValue = JSON.parse(value);
+              value = JSON.parse(rawValue);
               if (expiration > 0) {
-                await redis.set(key, JSON.stringify(jsonValue), 'EX', expiration);
+                await redis.set(key, JSON.stringify(value), 'EX', expiration);
               } else {
-                await redis.set(key, JSON.stringify(jsonValue));
+                await redis.set(key, JSON.stringify(value));
               }
               success = true;
             } catch (error) {
@@ -208,7 +230,11 @@ export class SetCache implements INodeType {
             dataType,
             success,
             expiresIn: expiration > 0 ? expiration : 'never',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            value:
+              returnBackValue && (success || returnBackValueAlways)
+                ? value
+                : undefined,
           },
         });
       }

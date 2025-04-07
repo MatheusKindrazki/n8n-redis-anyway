@@ -31,6 +31,7 @@ export class GetCache implements INodeType {
       {
         name: 'redis',
         required: true,
+        testedBy: 'redisConnectionTest', // see: https://github.com/n8n-io/n8n/blob/ae8cbbba2efe328eea5d43661cb634aa3f84099c/packages/nodes-base/nodes/Redis/Redis.node.ts#L37
       },
     ],
     properties: [
@@ -71,6 +72,7 @@ export class GetCache implements INodeType {
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
+        db: credentials.db as number,
       };
       
       RedisConnection.initialize(redisOptions);

@@ -40,7 +40,8 @@ export class RedisConnection {
       port: RedisConnection.connectionOptions.port,
       username: RedisConnection.connectionOptions.username ? '(set)' : '(not set)',
       password: RedisConnection.connectionOptions.password ? '(set)' : '(not set)',
-      tls: RedisConnection.connectionOptions.tls ? '(enabled)' : '(disabled)'
+      tls: RedisConnection.connectionOptions.tls ? '(enabled)' : '(disabled)',
+      db: RedisConnection.connectionOptions.db,
     });
   }
 
@@ -56,7 +57,7 @@ export class RedisConnection {
       RedisConnection.instance = null;
       
       RedisConnection.instance = new IORedis(RedisConnection.connectionOptions);
-      
+
       // Eventos de conexão
       RedisConnection.instance.on('connect', () => {
         console.log('Redis: Connected to server, authentification pending');
