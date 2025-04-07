@@ -54,7 +54,7 @@ export class Redis implements ICredentialType {
     },
     {
       displayName: 'Database',
-      name: 'db',
+      name: 'database',
       type: 'number',
       default: 0,
       required: true,

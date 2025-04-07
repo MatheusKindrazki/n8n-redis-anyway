@@ -152,7 +152,7 @@ export class ManipulateCache implements INodeType {
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
-        db: (credentials.db ?? credentials.database) as number,
+        db: credentials.database as number,
       };
       
       RedisConnection.initialize(redisOptions);
