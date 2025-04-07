@@ -9,6 +9,21 @@ import {
 } from 'n8n-workflow';
 import { RedisConnection } from './RedisConnection';
 
+const NodeConnectionTypeValue = {
+  AiAgent: "ai_agent",
+  AiChain: "ai_chain",
+  AiDocument: "ai_document",
+  AiEmbedding: "ai_embedding",
+  AiLanguageModel: "ai_languageModel",
+  AiMemory: "ai_memory",
+  AiOutputParser: "ai_outputParser",
+  AiRetriever: "ai_retriever",
+  AiTextSplitter: "ai_textSplitter",
+  AiTool: "ai_tool",
+  AiVectorStore: "ai_vectorStore",
+  Main: "main"
+} as const;
+
 export class GetCache implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Redis Get Cache',
@@ -21,11 +36,11 @@ export class GetCache implements INodeType {
     defaults: {
       name: 'Get Cache',
     },
-    inputs: [{ type: NodeConnectionType.Main }],
+    inputs: [{ type: NodeConnectionTypeValue.Main as NodeConnectionType }],
     outputs: [
-      { type: NodeConnectionType.Main, displayName: 'Valid Cache' },
-      { type: NodeConnectionType.Main, displayName: 'Invalid Cache' },
-      { type: NodeConnectionType.Main, displayName: 'Needs Renewal' },
+      { type: NodeConnectionTypeValue.Main as NodeConnectionType, displayName: 'Valid Cache' },
+      { type: NodeConnectionTypeValue.Main as NodeConnectionType, displayName: 'Invalid Cache' },
+      { type: NodeConnectionTypeValue.Main as NodeConnectionType, displayName: 'Needs Renewal' },
     ],
     credentials: [
       {
@@ -72,7 +87,7 @@ export class GetCache implements INodeType {
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
-        db: credentials.db as number,
+        db: (credentials.db ?? credentials.database) as number,
       };
       
       RedisConnection.initialize(redisOptions);

@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-redis-anyway",
+  "name": "@dkavraal/n8n-nodes-redis-anyway",
   "version": "0.1.13",
   "description": "A Redis cache management plugin for n8n with intelligent cache handling and proactive renewal",
   "keywords": [

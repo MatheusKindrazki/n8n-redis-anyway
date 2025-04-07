@@ -8,6 +8,21 @@ import {
 } from 'n8n-workflow';
 import { RedisConnection } from './RedisConnection';
 
+const NodeConnectionTypeValue = {
+  AiAgent: "ai_agent",
+  AiChain: "ai_chain",
+  AiDocument: "ai_document",
+  AiEmbedding: "ai_embedding",
+  AiLanguageModel: "ai_languageModel",
+  AiMemory: "ai_memory",
+  AiOutputParser: "ai_outputParser",
+  AiRetriever: "ai_retriever",
+  AiTextSplitter: "ai_textSplitter",
+  AiTool: "ai_tool",
+  AiVectorStore: "ai_vectorStore",
+  Main: "main"
+} as const;
+
 export class SetCache implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Redis Set Cache',
@@ -20,8 +35,8 @@ export class SetCache implements INodeType {
     defaults: {
       name: 'Set Cache',
     },
-    inputs: [{ type: NodeConnectionType.Main }],
-    outputs: [{ type: NodeConnectionType.Main }],
+    inputs: [{ type: NodeConnectionTypeValue.Main as NodeConnectionType }],
+    outputs: [{ type: NodeConnectionTypeValue.Main as NodeConnectionType }],
     credentials: [
       {
         name: 'redis',

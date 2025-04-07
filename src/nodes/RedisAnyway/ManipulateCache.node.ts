@@ -9,6 +9,21 @@ import {
 import { RedisConnection } from './RedisConnection';
 import { redisConnectionTest } from './util';
 
+const NodeConnectionTypeValue = {
+  AiAgent: "ai_agent",
+  AiChain: "ai_chain",
+  AiDocument: "ai_document",
+  AiEmbedding: "ai_embedding",
+  AiLanguageModel: "ai_languageModel",
+  AiMemory: "ai_memory",
+  AiOutputParser: "ai_outputParser",
+  AiRetriever: "ai_retriever",
+  AiTextSplitter: "ai_textSplitter",
+  AiTool: "ai_tool",
+  AiVectorStore: "ai_vectorStore",
+  Main: "main"
+} as const;
+
 export class ManipulateCache implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Redis Manipulate Cache',
@@ -21,8 +36,8 @@ export class ManipulateCache implements INodeType {
     defaults: {
       name: 'Manipulate Cache',
     },
-    inputs: [{ type: NodeConnectionType.Main }],
-    outputs: [{ type: NodeConnectionType.Main }],
+    inputs: [{ type: NodeConnectionTypeValue.Main as NodeConnectionType }],
+    outputs: [{ type: NodeConnectionTypeValue.Main as NodeConnectionType }],
     credentials: [
       {
         name: 'redis',
@@ -137,7 +152,7 @@ export class ManipulateCache implements INodeType {
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
-        db: credentials.db as number,
+        db: (credentials.db ?? credentials.database) as number,
       };
       
       RedisConnection.initialize(redisOptions);
