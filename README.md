@@ -149,4 +149,4 @@ MIT
 
 ## Author
 
-Matheus Kindrazki (kindra.fireflies@gmail.com) 
+Matheus Kindrazki (matheus@kindrazki.dev) 
