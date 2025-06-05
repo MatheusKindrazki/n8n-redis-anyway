@@ -51,7 +51,7 @@ export class RedisConnection {
     });
   }
 
-  public static getInstance(): IORedis {
+  public static async getInstance(): Promise<IORedis> {
     if (!RedisConnection.instance) {
       if (!RedisConnection.connectionOptions) {
         throw new Error(
@@ -92,15 +92,23 @@ export class RedisConnection {
         console.log("Redis: Attempting to reconnect...");
       });
 
-      // Tenta um ping para verificar a conexão
-      RedisConnection.instance
-        .ping()
-        .then(() => {
-          console.log("Redis connection successful (PING)");
-        })
-        .catch((err) => {
-          console.error("Redis ping failed:", err.message);
+      // Aguarda a conexão estar pronta antes de retornar
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Redis connection timeout"));
+        }, 15000); // 15 segundos timeout
+
+        RedisConnection.instance!.once("ready", () => {
+          clearTimeout(timeout);
+          console.log("Redis connection is ready for use");
+          resolve();
         });
+
+        RedisConnection.instance!.once("error", (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+      });
     }
 
     return RedisConnection.instance;

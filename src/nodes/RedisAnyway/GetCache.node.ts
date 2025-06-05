@@ -75,7 +75,7 @@ export class GetCache implements INodeType {
       };
       
       RedisConnection.initialize(redisOptions);
-      const redis = RedisConnection.getInstance();
+      const redis = await RedisConnection.getInstance();
 
       for (let i = 0; i < items.length; i++) {
         const key = this.getNodeParameter('key', i) as string;
