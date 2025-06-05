@@ -139,13 +139,14 @@ export class SetCache implements INodeType {
       const redisOptions = {
         host: credentials.host as string,
         port: credentials.port as number,
+        db: credentials.database ?? 0,
         username: credentials.username !== 'DEFAULT' ? credentials.username as string : undefined,
         password: credentials.password ? credentials.password as string : undefined,
         tls: credentials.useTls === true ? {} : undefined,
       };
       
       RedisConnection.initialize(redisOptions);
-      const redis = RedisConnection.getInstance();
+      const redis = await RedisConnection.getInstance();
 
       for (let i = 0; i < items.length; i++) {
         const key = this.getNodeParameter('key', i) as string;
