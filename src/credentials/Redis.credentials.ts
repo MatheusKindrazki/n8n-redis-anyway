@@ -2,8 +2,7 @@ import {
   IAuthenticateGeneric,
   ICredentialType,
   INodeProperties,
-  ICredentialTestRequest,
-} from 'n8n-workflow';
+} from "n8n-workflow";
 
 export class Redis implements ICredentialType {
   name = 'redis';
@@ -46,6 +45,15 @@ export class Redis implements ICredentialType {
       description: 'Senha do Redis. Deixe em branco para conexões sem senha',
     },
     {
+      displayName: 'Database',
+      name: 'database',
+      type: 'number',
+      default: 0,
+      required: false,
+      description: 'Número do database Redis (0-15). Padrão: 0',
+      hint: 'Redis suporta múltiplos databases numerados de 0 a 15',
+    },
+    {
       displayName: 'Use TLS/SSL',
       name: 'useTls',
       type: 'boolean',
@@ -59,11 +67,6 @@ export class Redis implements ICredentialType {
     properties: {},
   };
 
-  test: ICredentialTestRequest = {
-    request: {
-      baseURL: '=http://{{$credentials.host}}:{{$credentials.port}}',
-      method: 'HEAD',
-      timeout: 5000,
-    },
-  };
+  // Teste de conexão removido para evitar problemas de Cross Protocol Scripting
+  // O teste de conectividade será feito diretamente pelos nós durante a execução
 } 
