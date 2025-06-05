@@ -46,6 +46,13 @@ export class Redis implements ICredentialType {
       description: 'Senha do Redis. Deixe em branco para conexões sem senha',
     },
     {
+      displayName: 'Database',
+      name: 'db',
+      type: 'number',
+      default: 0,
+      description: 'Redis database number (0-15). Defaults to 0 if not specified.',
+    },
+    {
       displayName: 'Use TLS/SSL',
       name: 'useTls',
       type: 'boolean',

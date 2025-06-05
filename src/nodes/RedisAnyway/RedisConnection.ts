@@ -1,5 +1,9 @@
 import IORedis from 'ioredis';
-import type { RedisOptions } from 'ioredis';
+import type { RedisOptions as IoRedisOptions } from 'ioredis';
+
+export interface RedisOptions extends IoRedisOptions {
+  db?: number;
+}
 
 export class RedisConnection {
   private static instance: IORedis | null = null;
@@ -40,7 +44,8 @@ export class RedisConnection {
       port: RedisConnection.connectionOptions.port,
       username: RedisConnection.connectionOptions.username ? '(set)' : '(not set)',
       password: RedisConnection.connectionOptions.password ? '(set)' : '(not set)',
-      tls: RedisConnection.connectionOptions.tls ? '(enabled)' : '(disabled)'
+      tls: RedisConnection.connectionOptions.tls ? '(enabled)' : '(disabled)',
+      db: RedisConnection.connectionOptions.db,
     });
   }
 
